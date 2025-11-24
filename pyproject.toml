@@ -1,0 +1,50 @@
+[project]
+name = "habit-homepage"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.121.3",
+    "garminconnect>=0.2.34",
+    "pydantic-settings>=2.12.0",
+    "uvicorn[standard]>=0.38.0",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.18.2",
+    "pytest>=9.0.1",
+    "ruff>=0.14.6",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+lint.select = ["E", "F", "I", "B"]        # E/F: style/errors, I: imports, B: bugbear
+lint.ignore = ["E501"]                    # Let formatter handle line length if you prefer
+fix = true
+
+[tool.ruff.format]
+# This turns on Ruff's formatter (Black-like)
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.12"
+warn_unused_configs = true
+warn_return_any = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+strict_equality = true
+# Fix "Source file found twice" error
+explicit_package_bases = true
+mypy_path = "$MYPY_CONFIG_FILE_DIR"
+# Only check the habit_homepage package
+files = ["habit_homepage"]
+
+[[tool.mypy.overrides]]
+module = ["garminconnect", "garth.*"]
+ignore_missing_imports = true
