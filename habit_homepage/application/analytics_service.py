@@ -1,6 +1,8 @@
 from datetime import date, timedelta
 
+from habit_homepage.config.cache import cache
 from habit_homepage.config.logging import get_logger
+from habit_homepage.domain.exceptions import HabitNotFoundError
 from habit_homepage.ports.repositories.daily_log_repo import DailyLogRepository
 from habit_homepage.ports.repositories.habit_repo import HabitRepository
 
@@ -34,7 +36,7 @@ class AnalyticsService:
         # Verify habit exists
         habit = self.habit_repo.get_by_id(habit_id)
         if not habit:
-            raise ValueError(f"Habit '{habit_id}' not found")
+            raise HabitNotFoundError(habit_id)
 
         entries = self.log_repo.get_entries_by_habit(habit_id, start_date, end_date)
 
@@ -76,7 +78,7 @@ class AnalyticsService:
         # Verify habit exists
         habit = self.habit_repo.get_by_id(habit_id)
         if not habit:
-            raise ValueError(f"Habit '{habit_id}' not found")
+            raise HabitNotFoundError(habit_id)
 
         streak = 0
         check_date = as_of_date
@@ -93,6 +95,7 @@ class AnalyticsService:
 
         return streak
 
+    @cache(ttl=1800, key_prefix="longest_streak")
     def get_longest_streak(
         self, habit_id: str, start_date: date, end_date: date
     ) -> dict[str, int | str | None]:
@@ -104,11 +107,13 @@ class AnalyticsService:
             - length: number of days
             - start_date: when streak started (ISO string)
             - end_date: when streak ended (ISO string)
+
+        Cached for 30 minutes since it's computationally expensive.
         """
         # Verify habit exists
         habit = self.habit_repo.get_by_id(habit_id)
         if not habit:
-            raise ValueError(f"Habit '{habit_id}' not found")
+            raise HabitNotFoundError(habit_id)
 
         entries = self.log_repo.get_entries_by_habit(habit_id, start_date, end_date)
 
@@ -163,7 +168,7 @@ class AnalyticsService:
         # Verify habit exists
         habit = self.habit_repo.get_by_id(habit_id)
         if not habit:
-            raise ValueError(f"Habit '{habit_id}' not found")
+            raise HabitNotFoundError(habit_id)
 
         # Get first and last day of month
         start_date = date(year, month, 1)
@@ -226,7 +231,7 @@ class AnalyticsService:
         # Verify habit exists
         habit = self.habit_repo.get_by_id(habit_id)
         if not habit:
-            raise ValueError(f"Habit '{habit_id}' not found")
+            raise HabitNotFoundError(habit_id)
 
         entries = self.log_repo.get_entries_by_habit(habit_id, start_date, end_date)
 
@@ -264,7 +269,7 @@ class AnalyticsService:
         # Verify habit exists
         habit = self.habit_repo.get_by_id(habit_id)
         if not habit:
-            raise ValueError(f"Habit '{habit_id}' not found")
+            raise HabitNotFoundError(habit_id)
 
         entries = self.log_repo.get_entries_by_habit(habit_id, start_date, end_date)
 

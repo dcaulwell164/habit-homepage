@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(uv run:*)",
-      "Bash(ping:*)"
+      "Bash(ping:*)",
+      "Bash(curl:*)",
+      "Bash(uv add:*)"
     ],
     "deny": [],
     "ask": []

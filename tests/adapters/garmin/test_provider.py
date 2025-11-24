@@ -2,24 +2,25 @@ from unittest.mock import patch
 
 import pytest
 
-from habit_homepage.adapters.garmin.provider import GarminHabitDataProvider
+from habit_homepage.adapters.providers.garmin.provider import GarminHabitDataProvider
 from habit_homepage.domain.habit import Habit
+from habit_homepage.domain.value_objects import CategoryType, HabitSource
 
 
 @pytest.fixture
 def mock_garmin_client():
-    with patch("habit_homepage.adapters.garmin.provider.Garmin") as MockGarmin:
+    with patch("habit_homepage.adapters.providers.garmin.provider.Garmin") as MockGarmin:
         mock_instance = MockGarmin.return_value
         # Mock login to avoid actual network calls
-        mock_instance.login.return_value = True
+        mock_instance.login.return_value = (None, None)
         yield mock_instance
 
 
 @pytest.fixture
 def provider(mock_garmin_client):
-    # We also need to mock init_api to return our mock_client
+    # Mock the _init_api method to return our mock_client
     with patch.object(
-        GarminHabitDataProvider, "init_api", return_value=mock_garmin_client
+        GarminHabitDataProvider, "_init_api", return_value=mock_garmin_client
     ):
         return GarminHabitDataProvider("test@example.com", "password")
 
@@ -29,12 +30,13 @@ def test_get_steps(provider, mock_garmin_client):
     mock_garmin_client.get_user_summary.return_value = {"totalSteps": 5000}
 
     habit = Habit(
-        id="1",
-        name="Walk",
-        description="Daily walk",
-        frequency="daily",
-        target_value=10000,
-        provider_config={"metric": "steps"},
+        id="steps",
+        name="Daily Steps",
+        unit="steps",
+        source=HabitSource.AUTOMATIC,
+        description="Daily step count from Garmin",
+        category_id=CategoryType.HEALTH,
+        provider_config={"provider": "garmin", "metric": "steps"},
     )
 
     steps = provider.fetch_data(habit, "2023-10-27")
@@ -48,12 +50,13 @@ def test_get_heart_rate(provider, mock_garmin_client):
     mock_garmin_client.get_user_summary.return_value = {"restingHeartRate": 55}
 
     habit = Habit(
-        id="2",
-        name="Rest",
-        description="Resting HR",
-        frequency="daily",
-        target_value=60,
-        provider_config={"metric": "heart_rate"},
+        id="heart_rate",
+        name="Resting Heart Rate",
+        unit="bpm",
+        source=HabitSource.AUTOMATIC,
+        description="Resting heart rate from Garmin",
+        category_id=CategoryType.HEALTH,
+        provider_config={"provider": "garmin", "metric": "heart_rate"},
     )
 
     hr = provider.fetch_data(habit, "2023-10-27")
@@ -70,12 +73,13 @@ def test_get_exercise_minutes(provider, mock_garmin_client):
     ]
 
     habit = Habit(
-        id="3",
-        name="Exercise",
-        description="Daily exercise",
-        frequency="daily",
-        target_value=30,
-        provider_config={"metric": "exercise"},
+        id="exercise",
+        name="Total Exercise",
+        unit="minutes",
+        source=HabitSource.AUTOMATIC,
+        description="Total exercise minutes from Garmin",
+        category_id=CategoryType.HEALTH,
+        provider_config={"provider": "garmin", "metric": "exercise"},
     )
 
     # Test total minutes (no type filter)
@@ -84,12 +88,13 @@ def test_get_exercise_minutes(provider, mock_garmin_client):
 
     # Test with type filter
     habit_running = Habit(
-        id="4",
-        name="Run",
-        description="Daily run",
-        frequency="daily",
-        target_value=30,
-        provider_config={"metric": "exercise", "activity_type": "running"},
+        id="running",
+        name="Running",
+        unit="minutes",
+        source=HabitSource.AUTOMATIC,
+        description="Running minutes from Garmin",
+        category_id=CategoryType.HEALTH,
+        provider_config={"provider": "garmin", "metric": "exercise", "activity_type": "running"},
     )
 
     minutes_running = provider.fetch_data(habit_running, "2023-10-27")
@@ -98,11 +103,11 @@ def test_get_exercise_minutes(provider, mock_garmin_client):
 
 def test_fetch_data_invalid_config(provider):
     habit = Habit(
-        id="5",
+        id="invalid",
         name="Bad Config",
-        description="Invalid",
-        frequency="daily",
-        target_value=10,
+        unit="count",
+        source=HabitSource.AUTOMATIC,
+        description="Invalid configuration test",
         provider_config={},  # Missing metric
     )
 
@@ -114,12 +119,13 @@ def test_api_error_handling(provider, mock_garmin_client):
     mock_garmin_client.get_user_summary.side_effect = Exception("API Error")
 
     habit = Habit(
-        id="1",
-        name="Walk",
-        description="Daily walk",
-        frequency="daily",
-        target_value=10000,
-        provider_config={"metric": "steps"},
+        id="steps",
+        name="Daily Steps",
+        unit="steps",
+        source=HabitSource.AUTOMATIC,
+        description="Daily step count from Garmin",
+        category_id=CategoryType.HEALTH,
+        provider_config={"provider": "garmin", "metric": "steps"},
     )
 
     # Should return 0 on error as per implementation

@@ -1,6 +1,12 @@
 from datetime import date
 
 from habit_homepage.config.logging import get_logger
+from habit_homepage.domain.exceptions import (
+    DuplicateResourceError,
+    GoalNotFoundError,
+    HabitNotFoundError,
+    InvalidGoalConfigError,
+)
 from habit_homepage.domain.goal import Goal, GoalComparison, GoalPeriod
 from habit_homepage.ports.repositories.daily_log_repo import DailyLogRepository
 from habit_homepage.ports.repositories.goal_repo import GoalRepository
@@ -56,16 +62,16 @@ class GoalService:
         # Verify habit exists
         habit = self.habit_repo.get_by_id(habit_id)
         if not habit:
-            raise ValueError(f"Habit '{habit_id}' does not exist")
+            raise HabitNotFoundError(habit_id)
 
         # Verify goal ID is unique
         existing_goal = self.goal_repo.get_by_id(goal_id)
         if existing_goal:
-            raise ValueError(f"Goal '{goal_id}' already exists")
+            raise DuplicateResourceError("Goal", goal_id)
 
         # Validate dates
         if end_date and start_date > end_date:
-            raise ValueError("Start date must be before end date")
+            raise InvalidGoalConfigError("Start date must be before end date")
 
         goal = Goal(
             id=goal_id,
@@ -97,7 +103,7 @@ class GoalService:
         """
         goal = self.goal_repo.get_by_id(goal_id)
         if not goal:
-            raise ValueError(f"Goal '{goal_id}' not found")
+            raise GoalNotFoundError(goal_id)
 
         # Update only provided fields
         if target_value is not None:
@@ -119,7 +125,7 @@ class GoalService:
         """Delete a goal."""
         goal = self.goal_repo.get_by_id(goal_id)
         if not goal:
-            raise ValueError(f"Goal '{goal_id}' not found")
+            raise GoalNotFoundError(goal_id)
 
         self.goal_repo.delete(goal_id)
         logger.info(f"Deleted goal: {goal_id}")
@@ -154,7 +160,7 @@ class GoalService:
         """
         goal = self.goal_repo.get_by_id(goal_id)
         if not goal:
-            raise ValueError(f"Goal '{goal_id}' not found")
+            raise GoalNotFoundError(goal_id)
 
         # Check if goal is active on this date
         if not goal.is_active(check_date):

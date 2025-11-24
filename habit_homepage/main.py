@@ -2,6 +2,8 @@ from fastapi import FastAPI
 
 from habit_homepage.adapters.api.analytics_routes import create_analytics_router
 from habit_homepage.adapters.api.daily_log_routes import create_router
+from habit_homepage.adapters.api.dashboard_routes import create_dashboard_router
+from habit_homepage.adapters.api.exception_handlers import register_exception_handlers
 from habit_homepage.adapters.api.goal_routes import create_goal_router
 from habit_homepage.adapters.api.habit_routes import create_habit_router
 from habit_homepage.adapters.providers.garmin.provider import GarminHabitDataProvider
@@ -18,7 +20,7 @@ from habit_homepage.application.analytics_service import AnalyticsService
 from habit_homepage.application.daily_log_service import DailyLogService
 from habit_homepage.application.goal_service import GoalService
 from habit_homepage.application.habit_service import HabitService
-from habit_homepage.config.logging import setup_logging
+from habit_homepage.config.logging import get_logger, setup_logging
 from habit_homepage.config.settings import settings
 from habit_homepage.ports.providers.habit_data_provider import HabitDataProvider
 
@@ -42,6 +44,9 @@ setup_logging()
 
 app = FastAPI(title="Habit Tracker API")
 
+# Register exception handlers for domain exceptions
+register_exception_handlers(app)
+
 # ============================================================================
 # Dependency Injection - Hexagonal Architecture Wiring
 # ============================================================================
@@ -58,6 +63,8 @@ data_providers: list[HabitDataProvider] = []
 
 # Garmin provider (if credentials provided)
 if settings.garmin_email_address and settings.garmin_password:
+    logger = get_logger(__name__)
+    logger.info("Initializing Garmin provider")
     data_providers.append(
         GarminHabitDataProvider(
             email=settings.garmin_email_address,
@@ -67,12 +74,17 @@ if settings.garmin_email_address and settings.garmin_password:
 
 # GitHub provider (if credentials provided)
 if settings.github_token and settings.github_username:
+    logger = get_logger(__name__)
+    logger.info(f"Initializing GitHub provider for user: {settings.github_username}")
     data_providers.append(
         GitHubHabitDataProvider(
             token=settings.github_token,
             username=settings.github_username,
         )
     )
+else:
+    logger = get_logger(__name__)
+    logger.warning(f"GitHub provider NOT initialized. Token present: {bool(settings.github_token)}, Username present: {bool(settings.github_username)}")
 
 # 3. Initialize Application Services
 # Services depend on ports (interfaces), not concrete implementations
@@ -91,12 +103,14 @@ daily_log_router = create_router(log_service)
 habit_router = create_habit_router(habit_service)
 goal_router = create_goal_router(goal_service)
 analytics_router = create_analytics_router(analytics_service)
+dashboard_router = create_dashboard_router(log_service, analytics_service, goal_service)
 
 # 6. Register Routers with FastAPI
 app.include_router(daily_log_router, prefix="/api", tags=["Daily Logs"])
 app.include_router(habit_router, prefix="/api", tags=["Habits"])
 app.include_router(goal_router, prefix="/api", tags=["Goals"])
 app.include_router(analytics_router, prefix="/api", tags=["Analytics"])
+app.include_router(dashboard_router, prefix="/api", tags=["Dashboard"])
 
 
 @app.get("/")

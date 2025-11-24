@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     # Goodreads configuration
     goodreads_user_id: str = ""
 
+    # Cache configuration (optional - will fallback to in-memory if not provided)
+    redis_url: str | None = None
+
 
 # Singleton instance
 settings = Settings()

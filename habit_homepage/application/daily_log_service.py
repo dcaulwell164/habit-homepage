@@ -1,6 +1,7 @@
 from datetime import date, datetime, timezone
 
 from habit_homepage.domain.daily_log import DailyLog
+from habit_homepage.domain.exceptions import HabitNotFoundError, InvalidDateRangeError
 from habit_homepage.domain.habit import Habit
 from habit_homepage.domain.habit_entry import HabitEntry
 from habit_homepage.domain.value_objects import HabitSource
@@ -44,6 +45,8 @@ class DailyLogService:
 
     def get_by_date_range(self, start: date, end: date) -> list[DailyLog]:
         """Get all daily logs within a date range."""
+        if start > end:
+            raise InvalidDateRangeError(start.isoformat(), end.isoformat())
         return self.log_repo.get_by_date_range(start, end)
 
     def get_entries_by_habit(
@@ -65,7 +68,7 @@ class DailyLogService:
         # Verify habit exists
         habit = self.habit_repo.get_by_id(habit_id)
         if not habit:
-            raise ValueError(f"Habit '{habit_id}' does not exist")
+            raise HabitNotFoundError(habit_id)
 
         # Get or create log
         log = self.get_or_create(target_date)
